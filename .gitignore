@@ -1,4 +1,8 @@
 target/
+books/
+*.iws
+*.ipr
+*.iml
 pom.xml.tag
 pom.xml.releaseBackup
 pom.xml.next
