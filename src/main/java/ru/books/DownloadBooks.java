@@ -11,6 +11,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.*;
 import java.net.URI;
@@ -20,6 +22,8 @@ import java.net.URISyntaxException;
  * This is a class for downloading purchased E-Books from http://www.books.ru
  */
 public class DownloadBooks {
+
+    private static final Logger log = LoggerFactory.getLogger(DownloadBooks.class);
 
     public static final String GENERAL_LOCATION = "https://www.books.ru";
     public static final String LOGIN_PAGE = GENERAL_LOCATION + "/member/login.php";
