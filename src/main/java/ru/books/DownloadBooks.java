@@ -12,10 +12,7 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
-import java.io.BufferedInputStream;
-import java.io.BufferedOutputStream;
-import java.io.FileOutputStream;
-import java.io.IOException;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
 
@@ -26,7 +23,7 @@ import java.net.URISyntaxException;
  */
 public class DownloadBooks {
 
-    public static final String GENERAL_LOCATION = "http://www.books.ru";
+    public static final String GENERAL_LOCATION = "https://www.books.ru";
     public static final String LOGIN_PAGE = GENERAL_LOCATION + "/member/login.php";
     public static final String ORDER_ADDRESS_PREFIX = GENERAL_LOCATION + "/order.php?order=";
     public static final String LOGIN_PARAM = "login";
@@ -37,15 +34,17 @@ public class DownloadBooks {
     public static final String MAGIC_VALUE_X = "45";
     public static final String MAGIC_VALUE_Y = "8";
     public static final String DEFAULT_ENCODING = "UTF-8";
-    public static final String EMPTY_STRING = "";
+    public static final String CSS_BOOKS_SELECTOR = "table.catalog > tbody > tr:not(:last-child)";
     public static final String CSS_TITLE_SELECTOR = "p.title a";
-    public static final String EQUAL = "=";
-    public static final String HREF_ATTR = "href";
     public static final String CSS_URL_SELECTOR = "td.status a";
-    public static final String CSS_FORMAT_SELECTOR = "td.status a:first";
+    public static final String CSS_FORMAT_SELECTOR = "td.status a:first-child";
+    public static final String HREF_ATTR = "href";
     public static final String BOOKS_CATALOG = "books/";
     public static final String SEPARATOR = " : ";
     public static final String DOT = ".";
+    public static final String SLASH = "/";
+    public static final String EQUAL = "=";
+    public static final String EMPTY_STRING = "";
 
     public static void main(String[] args) throws IOException, URISyntaxException {
         if (args.length < 3 || args[0].isEmpty() || args[1].isEmpty() || args[2].isEmpty()) {
@@ -54,6 +53,14 @@ public class DownloadBooks {
             System.out.println("Usage: java -jar books-downloader.jar {orderId} {username} {password}");
             System.out.println("");
             return;
+        }
+
+        File booksDir = new File(BOOKS_CATALOG);
+        if (!booksDir.exists()) {
+            if (!booksDir.mkdir()) {
+                System.out.println("Error: Cannot create directory " + BOOKS_CATALOG);
+                return;
+            }
         }
 
         BasicCookieStore cookieStore = new BasicCookieStore();
@@ -84,12 +91,14 @@ public class DownloadBooks {
         CloseableHttpResponse booksResponse = httpclient.execute(httpGet);
 
         Document doc = Jsoup.parse(booksResponse.getEntity().getContent(), DEFAULT_ENCODING, EMPTY_STRING);
-        Elements res = doc.select("table.catalog > tbody > tr:not(:last-child)");
+        Elements res = doc.select(CSS_BOOKS_SELECTOR);
+
+        System.out.println("Found " + res.size() + " books");
 
         int i = 1;
         for (Element element : res) {
             try {
-                String title = element.select(CSS_TITLE_SELECTOR).text().replaceAll("/", "");
+                String title = element.select(CSS_TITLE_SELECTOR).text().replaceAll(SLASH, EMPTY_STRING);
                 String url = GENERAL_LOCATION + element.select(CSS_URL_SELECTOR).attr(HREF_ATTR).split(EQUAL)[1];
                 String suffix = element.select(CSS_FORMAT_SELECTOR).text();
 
@@ -97,7 +106,7 @@ public class DownloadBooks {
                 CloseableHttpResponse fileResponse = httpclient.execute(bookGet);
 
                 BufferedInputStream inputStraem = new BufferedInputStream(fileResponse.getEntity().getContent());
-                BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(BOOKS_CATALOG + (title.length() >= 250 ? title.substring(0, 255) : title) + DOT + suffix));
+                BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(BOOKS_CATALOG + (title.length() >= 245 ? title.substring(0, 245) : title) + DOT + suffix));
 
                 int b;
                 while ((b = inputStraem.read()) != -1) {
