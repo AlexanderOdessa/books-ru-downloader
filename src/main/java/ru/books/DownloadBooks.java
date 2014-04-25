@@ -17,9 +17,7 @@ import java.net.URI;
 import java.net.URISyntaxException;
 
 /**
- *
  * This is a class for downloading purchased E-Books from http://www.books.ru
- *
  */
 public class DownloadBooks {
 
@@ -37,7 +35,6 @@ public class DownloadBooks {
     public static final String CSS_BOOKS_SELECTOR = "table.catalog > tbody > tr:not(:last-child)";
     public static final String CSS_TITLE_SELECTOR = "p.title a";
     public static final String CSS_URL_SELECTOR = "td.status a";
-    public static final String CSS_FORMAT_SELECTOR = "td.status a:first-child";
     public static final String HREF_ATTR = "href";
     public static final String BOOKS_CATALOG = "books/";
     public static final String SEPARATOR = " : ";
@@ -99,25 +96,30 @@ public class DownloadBooks {
         for (Element element : res) {
             try {
                 String title = element.select(CSS_TITLE_SELECTOR).text().replaceAll(SLASH, EMPTY_STRING);
-                String url = GENERAL_LOCATION + element.select(CSS_URL_SELECTOR).attr(HREF_ATTR).split(EQUAL)[1];
-                String suffix = element.select(CSS_FORMAT_SELECTOR).text();
 
-                HttpGet bookGet = new HttpGet(url);
-                CloseableHttpResponse fileResponse = httpclient.execute(bookGet);
+                Elements urls = element.select(CSS_URL_SELECTOR);
+                for (Element url : urls) {
+                    String bookUrl = GENERAL_LOCATION + url.attr(HREF_ATTR).split(EQUAL)[1];
+                    String suffix = url.text();
 
-                BufferedInputStream inputStraem = new BufferedInputStream(fileResponse.getEntity().getContent());
-                BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(BOOKS_CATALOG + (title.length() >= 245 ? title.substring(0, 245) : title) + DOT + suffix));
+                    HttpGet bookGet = new HttpGet(bookUrl);
+                    CloseableHttpResponse fileResponse = httpclient.execute(bookGet);
 
-                int b;
-                while ((b = inputStraem.read()) != -1) {
-                    outputStream.write(b);
+                    BufferedInputStream inputStraem = new BufferedInputStream(fileResponse.getEntity().getContent());
+                    String filename = (title.length() > 120 ? title.substring(0, 119) : title) + DOT + suffix;
+                    BufferedOutputStream outputStream = new BufferedOutputStream(new FileOutputStream(BOOKS_CATALOG + filename));
+
+                    int b;
+                    while ((b = inputStraem.read()) != -1) {
+                        outputStream.write(b);
+                    }
+
+                    inputStraem.close();
+                    outputStream.close();
+                    System.out.println(i + SEPARATOR + filename);
+
+                    fileResponse.close();
                 }
-
-                inputStraem.close();
-                outputStream.close();
-                System.out.println(i + SEPARATOR + title);
-
-                fileResponse.close();
             } catch (Throwable ex) {
                 ex.printStackTrace();
             } finally {
