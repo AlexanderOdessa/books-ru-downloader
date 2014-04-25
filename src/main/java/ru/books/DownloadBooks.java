@@ -31,8 +31,22 @@ public class DownloadBooks {
                 .setDefaultCookieStore(cookieStore)
                 .build();
 
-        HttpUriRequest login = RequestBuilder.post().setUri(new URI("http://www.books.ru/member/login.php")).addParameter("login", args[1]).addParameter("password", args[2]).addParameter("go", "login").addParameter("x", "45").addParameter("y", "8").build();
+        HttpUriRequest login = RequestBuilder
+                .post()
+                .setUri(new URI("http://www.books.ru/member/login.php"))
+                .addParameter("login", args[1]).addParameter("password", args[2])
+                .addParameter("go", "login")
+                .addParameter("x", "45")
+                .addParameter("y", "8")
+                .build();
         CloseableHttpResponse loginResponse = httpclient.execute(login);
+
+        if (loginResponse.getStatusLine().getStatusCode() == 302) {
+            System.out.println("Login OK");
+        } else {
+            System.out.println("Login failed");
+            return;
+        }
 
         loginResponse.close();
 
@@ -73,6 +87,7 @@ public class DownloadBooks {
         }
 
         booksResponse.close();
+        httpclient.close();
 
     }
 }
