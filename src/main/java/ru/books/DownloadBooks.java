@@ -28,57 +28,48 @@ public class DownloadBooks {
     private static final String URL = "https://www.books.ru";
     private static final String BOOKS_FOLDER_NAME = "books/";
 
-    public static void main(String[] args) throws IOException, URISyntaxException {
-        if (args.length < 3 || args[0].isEmpty() || args[1].isEmpty() || args[2].isEmpty()) {
-            log.info(EMPTY_STRING);
-            log.info(EMPTY_STRING);
-            log.info("Usage: java -jar books-downloader.jar {orderId} {username} {password}");
-            log.info(EMPTY_STRING);
-            return;
+    public static void main(String[] parameters) {
+        try {
+            checkInputParameters(parameters);
+
+            String orderId = parameters[0];
+            String username = parameters[1];
+            String password = parameters[2];
+
+            checkOutputFolder();
+            CloseableHttpClient httpclient = createHttpClient();
+            login(httpclient, username, password);
+            getBooks(orderId, httpclient);
+            httpclient.close();
+        } catch (IOException ex) {
+            log.info("Warning: Cannot properly close HTTP connection to books.ru");
+        } catch (DownloadException ex) {
+            log.error(ex.getMessage());
         }
+    }
 
-        File booksDir = new File(BOOKS_FOLDER_NAME);
-        if (!booksDir.exists()) {
-            if (!booksDir.mkdir()) {
-                log.error("Error: Cannot create directory '{}'", BOOKS_FOLDER_NAME);
-                return;
-            }
+    private static void getBooks(String orderId, CloseableHttpClient httpclient) throws DownloadException {
+        try {
+            HttpGet httpGet = new HttpGet(URL + "/order.php?order=" + orderId);
+            CloseableHttpResponse booksResponse = httpclient.execute(httpGet);
+
+            Document doc = Jsoup.parse(booksResponse.getEntity().getContent(), "UTF-8", EMPTY_STRING);
+            Elements bookElements = doc.select("table.catalog > tbody > tr:not(:last-child)");
+
+            log.info("Found {} books", bookElements.size());
+
+            processBooks(httpclient, bookElements);
+
+            log.info("All books were downloaded");
+
+            booksResponse.close();
+        } catch (IOException ex) {
+            throw new DownloadException("Error: Cannot get books. Reason: " + ex.getMessage());
         }
+    }
 
-        BasicCookieStore cookieStore = new BasicCookieStore();
-        CloseableHttpClient httpclient = HttpClients.custom()
-                .setDefaultCookieStore(cookieStore)
-                .build();
-
-        HttpUriRequest login = RequestBuilder
-                .post()
-                .setUri(new URI(URL + "/member/login.php"))
-                .addParameter("login", args[1])
-                .addParameter("password", args[2])
-                .addParameter("go", "login")
-                .addParameter("x", "45")
-                .addParameter("y", "8")
-                .build();
-        CloseableHttpResponse loginResponse = httpclient.execute(login);
-
-        if (loginResponse.getStatusLine().getStatusCode() == 302) {
-            log.info("Login OK");
-        } else {
-            log.info("Login failed");
-            return;
-        }
-
-        loginResponse.close();
-
-        HttpGet httpGet = new HttpGet(URL + "/order.php?order=" + args[0]);
-        CloseableHttpResponse booksResponse = httpclient.execute(httpGet);
-
-        Document doc = Jsoup.parse(booksResponse.getEntity().getContent(), "UTF-8", EMPTY_STRING);
-        Elements res = doc.select("table.catalog > tbody > tr:not(:last-child)");
-
-        log.info("Found {} books", res.size());
-
-        int i = 1;
+    private static void processBooks(CloseableHttpClient httpclient, Elements res) {
+        int booksCount = 1;
         for (Element element : res) {
             try {
                 String title = element.select("p.title a").text().replaceAll("/", EMPTY_STRING);
@@ -102,21 +93,79 @@ public class DownloadBooks {
 
                     inputStraem.close();
                     outputStream.close();
-                    log.info("{} : {}", i, filename);
+                    log.info("{} : {} ... Saved", booksCount, filename);
 
                     fileResponse.close();
                 }
             } catch (Throwable ex) {
                 ex.printStackTrace();
             } finally {
-                i++;
+                booksCount++;
             }
         }
+    }
 
-        log.info("All books were downloaded");
+    private static void login(CloseableHttpClient httpclient, String username, String password) throws DownloadException {
+        HttpUriRequest login;
+        try {
+            login = RequestBuilder
+                    .post()
+                    .setUri(new URI(URL + "/member/login.php"))
+                    .addParameter("login", username)
+                    .addParameter("password", password)
+                    .addParameter("go", "login")
+                    .addParameter("x", "45")
+                    .addParameter("y", "8")
+                    .build();
+        } catch (URISyntaxException ex) {
+            throw new DownloadException("Error: You do not see that error. It's impossible.");
+        }
 
-        booksResponse.close();
-        httpclient.close();
+        CloseableHttpResponse loginResponse;
+        try {
+            loginResponse = httpclient.execute(login);
+        } catch (IOException ex) {
+            throw new DownloadException("Error: Cannot process login request. Reason: " + ex.getMessage());
+        }
 
+        if (loginResponse.getStatusLine().getStatusCode() == 302) {
+            log.info("Login OK");
+        } else {
+            log.info("Login failed");
+            throw new DownloadException("Error: Login failed. Check username and password");
+        }
+
+        try {
+            loginResponse.close();
+        } catch (IOException ex) {
+            log.info("Warning: Cannot properly close HTTP connection to books.ru");
+        }
+    }
+
+    private static CloseableHttpClient createHttpClient() {
+        BasicCookieStore cookieStore = new BasicCookieStore();
+        return HttpClients.custom()
+                .setDefaultCookieStore(cookieStore)
+                .build();
+    }
+
+    private static void checkInputParameters(String[] parameters) throws DownloadException {
+        if (parameters.length < 3 || parameters[0].isEmpty() || parameters[1].isEmpty() || parameters[2].isEmpty()) {
+            log.info(EMPTY_STRING);
+            log.info(EMPTY_STRING);
+            log.info("Usage: java -jar books-downloader.jar {orderId} {username} {password}");
+            log.info(EMPTY_STRING);
+            throw new DownloadException("Wrong arguments");
+        }
+    }
+
+    private static void checkOutputFolder() throws DownloadException {
+        File booksDir = new File(BOOKS_FOLDER_NAME);
+        if (!booksDir.exists()) {
+            if (!booksDir.mkdir()) {
+                log.error("Error: Cannot create directory '{}'", BOOKS_FOLDER_NAME);
+                throw new DownloadException("Error: Cannot create directory '" + BOOKS_FOLDER_NAME + "'");
+            }
+        }
     }
 }
