@@ -1,5 +1,5 @@
 target/
-books/
+./books/
 *.iws
 *.ipr
 *.iml
