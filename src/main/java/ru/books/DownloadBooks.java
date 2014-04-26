@@ -23,8 +23,8 @@ import java.net.URISyntaxException;
  */
 public class DownloadBooks {
 
-    public static final String EMPTY_STRING = "";
     private static final Logger log = LoggerFactory.getLogger(DownloadBooks.class);
+    private static final String EMPTY_STRING = "";
     private static final String URL = "https://www.books.ru";
     private static final String BOOKS_FOLDER_NAME = "books/";
 
