@@ -131,7 +131,7 @@ public class DownloadBooks {
                     .addParameter("y", "8")
                     .build();
         } catch (URISyntaxException ex) {
-            throw new DownloadException("Error: You do not see that error. It's impossible.");
+            throw new DownloadException("Error: These aren't the droids you're looking for... This isn't the error you're looking at...");
         }
 
         CloseableHttpResponse loginResponse;
