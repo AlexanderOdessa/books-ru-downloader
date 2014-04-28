@@ -23,6 +23,7 @@ import java.net.URISyntaxException;
  */
 public class DownloadBooks {
 
+    public static final String UNRERLINE = "_";
     private static final Logger log = LoggerFactory.getLogger(DownloadBooks.class);
     private static final String EMPTY_STRING = "";
     private static final String URL = "https://www.books.ru";
@@ -72,7 +73,19 @@ public class DownloadBooks {
         int booksCount = 1;
         for (Element element : res) {
             try {
-                String title = element.select("p.title a").text().replaceAll("/", EMPTY_STRING);
+                String title = element.select("p.title a").text()
+                        .replaceAll("/", EMPTY_STRING)
+                        .replaceAll("\\\\", EMPTY_STRING)
+                        .replaceAll("\\?", EMPTY_STRING)
+                        .replaceAll("\\%", EMPTY_STRING)
+                        .replaceAll("\\*", EMPTY_STRING)
+                        .replaceAll("\\:", EMPTY_STRING)
+                        .replaceAll("\\|", EMPTY_STRING)
+                        .replaceAll("\"", EMPTY_STRING)
+                        .replaceAll("\\<", EMPTY_STRING)
+                        .replaceAll("\\>", EMPTY_STRING)
+                        .replaceAll("\\,", EMPTY_STRING)
+                        .replaceAll(" ", UNRERLINE);
 
                 Elements urls = element.select("td.status a");
                 for (Element url : urls) {
